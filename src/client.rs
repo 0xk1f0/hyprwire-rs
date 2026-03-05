@@ -14,7 +14,7 @@ pub struct HyprWireClient {
 impl HyprWireClient {
     fn parse_argument(&mut self, magic: u8) -> Result<wire::Value, String> {
         match magic {
-            wire::Type::UINT => {
+            wire::MagicType::HW_UINT => {
                 let mut buf = [0u8; 4];
                 self.stream
                     .read_exact(&mut buf)
@@ -22,7 +22,7 @@ impl HyprWireClient {
                 let val = u32::from_le_bytes(buf);
                 Ok(wire::Value::Uint(val))
             }
-            wire::Type::INT => {
+            wire::MagicType::HW_INT => {
                 let mut buf = [0u8; 4];
                 self.stream
                     .read_exact(&mut buf)
@@ -30,7 +30,7 @@ impl HyprWireClient {
                 let val = i32::from_le_bytes(buf);
                 Ok(wire::Value::Int(val))
             }
-            wire::Type::F32 => {
+            wire::MagicType::HW_F32 => {
                 let mut buf = [0u8; 4];
                 self.stream
                     .read_exact(&mut buf)
@@ -38,7 +38,7 @@ impl HyprWireClient {
                 let val = f32::from_le_bytes(buf);
                 Ok(wire::Value::Float(val))
             }
-            wire::Type::OBJECT_ID => {
+            wire::MagicType::HW_OBJECT_ID => {
                 let mut buf = [0u8; 4];
                 self.stream
                     .read_exact(&mut buf)
@@ -46,7 +46,7 @@ impl HyprWireClient {
                 let val = u32::from_le_bytes(buf);
                 Ok(wire::Value::ObjId(val))
             }
-            wire::Type::SEQ => {
+            wire::MagicType::HW_SEQ => {
                 let mut buf = [0u8; 4];
                 self.stream
                     .read_exact(&mut buf)
@@ -54,7 +54,7 @@ impl HyprWireClient {
                 let val = u32::from_le_bytes(buf);
                 Ok(wire::Value::Seq(val))
             }
-            wire::Type::VARCHAR => {
+            wire::MagicType::HW_VARCHAR => {
                 let mut len_buf = [0u8; 1];
                 self.stream
                     .read_exact(&mut len_buf)
@@ -69,7 +69,7 @@ impl HyprWireClient {
                 let s = String::from_utf8(str_buf).map_err(|e| e.to_string())?;
                 Ok(wire::Value::Varchar(s))
             }
-            wire::Type::ARRAY => {
+            wire::MagicType::HW_ARRAY => {
                 let mut type_buf = [0u8; 1];
                 self.stream
                     .read_exact(&mut type_buf)
@@ -83,7 +83,7 @@ impl HyprWireClient {
                 let count = u8::from_le_bytes(count_buf);
 
                 match array_type {
-                    wire::Type::VARCHAR => {
+                    wire::MagicType::HW_VARCHAR => {
                         let mut vec = Vec::with_capacity(count as usize);
 
                         for _ in 0..count {
@@ -104,7 +104,7 @@ impl HyprWireClient {
 
                         return Ok(wire::Value::ArrayVarchar(vec));
                     }
-                    wire::Type::UINT => {
+                    wire::MagicType::HW_UINT => {
                         let mut vec = Vec::with_capacity(count as usize);
 
                         for _ in 0..count {
@@ -122,7 +122,7 @@ impl HyprWireClient {
                     }
                 }
             }
-            wire::Type::OBJECT => {
+            wire::MagicType::HW_OBJECT => {
                 let mut buf = [0u8; 4];
                 self.stream
                     .read_exact(&mut buf)
@@ -158,33 +158,33 @@ impl HyprWireClient {
         for arg in args {
             match arg {
                 wire::Value::Uint(val) => {
-                    buffer.push(wire::Type::UINT);
+                    buffer.push(wire::MagicType::HW_UINT);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
                 wire::Value::Int(val) => {
-                    buffer.push(wire::Type::INT);
+                    buffer.push(wire::MagicType::HW_INT);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
                 wire::Value::Float(val) => {
-                    buffer.push(wire::Type::F32);
+                    buffer.push(wire::MagicType::HW_F32);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
                 wire::Value::Seq(val) => {
-                    buffer.push(wire::Type::SEQ);
+                    buffer.push(wire::MagicType::HW_SEQ);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
                 wire::Value::ObjId(val) => {
-                    buffer.push(wire::Type::OBJECT_ID);
+                    buffer.push(wire::MagicType::HW_OBJECT_ID);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
                 wire::Value::Varchar(val) => {
-                    buffer.push(wire::Type::VARCHAR);
+                    buffer.push(wire::MagicType::HW_VARCHAR);
                     let len = val.len() as u8;
                     buffer.extend_from_slice(&len.to_le_bytes());
                     buffer.extend_from_slice(val.as_bytes());
                 }
                 wire::Value::ArrayUint(vals) => {
-                    buffer.push(wire::Type::ARRAY);
+                    buffer.push(wire::MagicType::HW_ARRAY);
                     let count = vals.len() as u8;
                     buffer.extend_from_slice(&count.to_le_bytes());
                     for v in vals {
@@ -192,7 +192,7 @@ impl HyprWireClient {
                     }
                 }
                 wire::Value::ArrayVarchar(vals) => {
-                    buffer.push(wire::Type::ARRAY);
+                    buffer.push(wire::MagicType::HW_ARRAY);
                     let count = vals.len() as u8;
                     buffer.extend_from_slice(&count.to_le_bytes());
                     for v in vals {
@@ -202,13 +202,13 @@ impl HyprWireClient {
                     }
                 }
                 wire::Value::Object(val) => {
-                    buffer.push(wire::Type::OBJECT);
+                    buffer.push(wire::MagicType::HW_OBJECT);
                     buffer.extend_from_slice(&val.0.to_le_bytes());
                 }
             }
         }
 
-        buffer.push(wire::Code::END);
+        buffer.push(wire::MagicType::HW_END);
 
         self.stream.write_all(&buffer).map_err(|e| e.to_string())?;
         self.stream.flush().map_err(|e| e.to_string())?;
@@ -236,7 +236,7 @@ impl HyprWireClient {
                 .map_err(|e| e.to_string())?;
             let magic = magic_buf[0];
 
-            if magic == wire::Code::END {
+            if magic == wire::MagicType::HW_END {
                 break;
             }
 
@@ -250,13 +250,13 @@ impl HyprWireClient {
     /// Perform the hyprwire handshake procedure
     pub fn perform_handshake(&mut self, version: u32) -> Result<Vec<String>, String> {
         self.send_message(
-            wire::Code::SUP,
+            wire::Code::HW_SUP,
             &[wire::Value::Varchar("VAX".to_string())],
             false,
         )?;
 
         let msg = self.read_message()?;
-        if msg.code != wire::Code::HANDSHAKE_BEGIN {
+        if msg.code != wire::Code::HW_HANDSHAKE_BEGIN {
             return Err(format!("Expected HANDSHAKE_BEGIN, got {:#02x}", msg.code));
         }
 
@@ -274,10 +274,10 @@ impl HyprWireClient {
             ));
         }
 
-        self.send_message(wire::Code::HANDSHAKE_ACK, &[wire::Value::Uint(1)], false)?;
+        self.send_message(wire::Code::HW_HANDSHAKE_ACK, &[wire::Value::Uint(1)], false)?;
 
         let msg = self.read_message()?;
-        if msg.code != wire::Code::HANDSHAKE_PROTOCOLS {
+        if msg.code != wire::Code::HW_HANDSHAKE_PROTOCOLS {
             return Err(format!(
                 "Expected HANDSHAKE_PROTOCOLS, got {:#02x}",
                 msg.code
@@ -301,7 +301,7 @@ impl HyprWireClient {
             .ok_or(format!("Invalid Protocol String: {}", protocol))?
             .0;
         self.send_message(
-            wire::Code::BIND_PROTOCOL,
+            wire::Code::HW_BIND_PROTOCOL,
             &[
                 wire::Value::Uint(self.sequence),
                 wire::Value::Varchar(spec.to_string()),
