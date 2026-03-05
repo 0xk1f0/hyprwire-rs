@@ -128,10 +128,17 @@ pub enum Value {
     ArrayUint(Vec<u32>),
     ArrayVarchar(Vec<String>),
     Object((u32, String)),
+    ObjectId(u32),
 }
 
 #[derive(Debug)]
 pub struct Message {
     pub code: u8,
     pub args: Vec<Value>,
+}
+
+#[derive(Debug)]
+pub struct Protocol {
+    pub spec: String,
+    pub version: u32,
 }

@@ -1,2 +1,2 @@
-mod client;
-mod wire;
+pub mod client;
+pub mod wire;
