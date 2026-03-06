@@ -1,0 +1,30 @@
+name: "Build Cargo"
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/**'
+      - 'android/**'
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/**'
+      - 'android/**'
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+jobs:
+  build-plugin-cargo:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build plugin binaries
+        run: |
+          cargo build --release
