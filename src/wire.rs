@@ -123,11 +123,10 @@ pub enum Value {
     Int(i32),
     Float(f32),
     Seq(u32),
-    ObjId(u32),
     Varchar(String),
     ArrayUint(Vec<u32>),
     ArrayVarchar(Vec<String>),
-    Object((u32, String)),
+    Object(u32),
     ObjectId(u32),
 }
 

@@ -42,7 +42,7 @@ impl HyprWireClient {
                     .read_exact(&mut buf)
                     .map_err(|e| e.to_string())?;
                 let val = u32::from_le_bytes(buf);
-                Ok(wire::Value::ObjId(val))
+                Ok(wire::Value::ObjectId(val))
             }
             wire::MagicType::HW_SEQ => {
                 let mut buf = [0u8; 4];
@@ -121,22 +121,12 @@ impl HyprWireClient {
                 }
             }
             wire::MagicType::HW_OBJECT => {
-                let mut obj_id = [0u8; 4];
+                let mut buf = [0u8; 4];
                 self.stream
-                    .read_exact(&mut obj_id)
+                    .read_exact(&mut buf)
                     .map_err(|e| e.to_string())?;
-                let object_id = u32::from_le_bytes(obj_id);
-                let mut obj_name_len_buf = [0u8; 1];
-                self.stream
-                    .read_exact(&mut obj_name_len_buf)
-                    .map_err(|e| e.to_string())?;
-                let object_name_length = u8::from_le_bytes(obj_name_len_buf) as usize;
-                let mut obj_str_buf = vec![0u8; object_name_length];
-                self.stream
-                    .read_exact(&mut obj_str_buf)
-                    .map_err(|e| e.to_string())?;
-                let object_name = String::from_utf8(obj_str_buf).map_err(|e| e.to_string())?;
-                Ok(wire::Value::Object((object_id, object_name)))
+                let val = u32::from_le_bytes(buf);
+                Ok(wire::Value::Object(val))
             }
             _ => Err(format!("Unknown magic byte: {:#02x}", magic)),
         }
@@ -149,6 +139,15 @@ impl HyprWireClient {
             stream,
             sequence: 0,
         })
+    }
+
+    /// Disconnect from a hyprwire-enabled Unix Socket
+    pub fn disconnect(&mut self) -> Result<(), String> {
+        self.stream
+            .shutdown(std::net::Shutdown::Both)
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
     }
 
     /// Get current sequence counter
@@ -181,7 +180,7 @@ impl HyprWireClient {
                     buffer.push(wire::MagicType::HW_SEQ);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
-                wire::Value::ObjId(val) => {
+                wire::Value::ObjectId(val) => {
                     buffer.push(wire::MagicType::HW_OBJECT_ID);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
@@ -210,13 +209,6 @@ impl HyprWireClient {
                     }
                 }
                 wire::Value::Object(val) => {
-                    buffer.push(wire::MagicType::HW_OBJECT);
-                    buffer.extend_from_slice(&val.0.to_le_bytes());
-                    let name_len = val.1.len() as u8;
-                    buffer.extend_from_slice(&name_len.to_le_bytes());
-                    buffer.extend_from_slice(val.1.as_bytes());
-                }
-                wire::Value::ObjectId(val) => {
                     buffer.push(wire::MagicType::HW_OBJECT);
                     buffer.extend_from_slice(&val.to_le_bytes());
                 }
